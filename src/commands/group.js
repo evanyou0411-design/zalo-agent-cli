@@ -1,7 +1,9 @@
 /**
- * Group commands — list, create, info, members, add/remove-member, rename, leave, join.
+ * Group commands — list, create, info, members, add/remove-member, rename, avatar,
+ * admin, owner, block/unblock, settings, leave, join.
  */
 
+import { resolve } from "path";
 import { getApi } from "../core/zalo-client.js";
 import { success, error, info, output } from "../utils/output.js";
 
@@ -94,6 +96,78 @@ export function registerGroupCommands(program) {
                 output(result, program.opts().json, () => success(`Group renamed to "${name}"`));
             } catch (e) {
                 error(e.message);
+            }
+        });
+
+    group
+        .command("avatar <groupId> <imagePath>")
+        .description("Change group avatar")
+        .action(async (groupId, imagePath) => {
+            try {
+                const result = await getApi().changeGroupAvatar(resolve(imagePath), groupId);
+                output(result, program.opts().json, () => success("Group avatar changed"));
+            } catch (e) {
+                error(`Change avatar failed: ${e.message}`);
+            }
+        });
+
+    group
+        .command("add-admin <groupId> <userIds...>")
+        .description("Promote members to group admin (deputy)")
+        .action(async (groupId, userIds) => {
+            try {
+                const result = await getApi().addGroupDeputy(userIds, groupId);
+                output(result, program.opts().json, () => success("Admin(s) added"));
+            } catch (e) {
+                error(`Add admin failed: ${e.message}`);
+            }
+        });
+
+    group
+        .command("remove-admin <groupId> <userIds...>")
+        .description("Demote admins back to regular members")
+        .action(async (groupId, userIds) => {
+            try {
+                const result = await getApi().removeGroupDeputy(userIds, groupId);
+                output(result, program.opts().json, () => success("Admin(s) removed"));
+            } catch (e) {
+                error(`Remove admin failed: ${e.message}`);
+            }
+        });
+
+    group
+        .command("transfer-owner <groupId> <userId>")
+        .description("Transfer group ownership to another member")
+        .action(async (groupId, userId) => {
+            try {
+                const result = await getApi().changeGroupOwner(userId, groupId);
+                output(result, program.opts().json, () => success(`Ownership transferred to ${userId}`));
+            } catch (e) {
+                error(`Transfer owner failed: ${e.message}`);
+            }
+        });
+
+    group
+        .command("block-member <groupId> <userIds...>")
+        .description("Block members from rejoining the group")
+        .action(async (groupId, userIds) => {
+            try {
+                const result = await getApi().addGroupBlockedMember(userIds, groupId);
+                output(result, program.opts().json, () => success("Member(s) blocked"));
+            } catch (e) {
+                error(`Block member failed: ${e.message}`);
+            }
+        });
+
+    group
+        .command("unblock-member <groupId> <userIds...>")
+        .description("Unblock previously blocked members")
+        .action(async (groupId, userIds) => {
+            try {
+                const result = await getApi().removeGroupBlockedMember(userIds, groupId);
+                output(result, program.opts().json, () => success("Member(s) unblocked"));
+            } catch (e) {
+                error(`Unblock member failed: ${e.message}`);
             }
         });
 
