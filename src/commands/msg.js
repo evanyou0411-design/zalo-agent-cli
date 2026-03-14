@@ -206,6 +206,47 @@ export function registerMsgCommands(program) {
             }
         });
 
+    msg.command("listen")
+        .description("Listen for incoming messages (Ctrl+C to stop)")
+        .action(async () => {
+            try {
+                const api = getApi();
+                info("Listening for messages... Press Ctrl+C to stop.");
+                info("Note: Only one web listener per account. Browser Zalo will disconnect.");
+
+                api.listener.on("message", (msg) => {
+                    const content = typeof msg.data.content === "string" ? msg.data.content : "[non-text]";
+                    const data = {
+                        msgId: msg.data.msgId,
+                        cliMsgId: msg.data.cliMsgId,
+                        threadId: msg.threadId,
+                        type: msg.type,
+                        isSelf: msg.isSelf,
+                        content,
+                    };
+                    if (program.opts().json) {
+                        console.log(JSON.stringify(data));
+                    } else {
+                        const dir = msg.isSelf ? "→" : "←";
+                        console.log(`  ${dir} [${msg.threadId}] ${content}  (msgId: ${msg.data.msgId})`);
+                    }
+                });
+
+                api.listener.start();
+
+                // Keep alive until Ctrl+C
+                await new Promise((resolve) => {
+                    process.on("SIGINT", () => {
+                        api.listener.stop();
+                        info("Listener stopped.");
+                        resolve();
+                    });
+                });
+            } catch (e) {
+                error(`Listen failed: ${e.message}`);
+            }
+        });
+
     msg.command("delete <msgId> <threadId>")
         .description("Delete a message you sent")
         .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
