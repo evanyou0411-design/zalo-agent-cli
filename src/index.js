@@ -18,6 +18,7 @@ import { registerFriendCommands } from "./commands/friend.js";
 import { registerGroupCommands } from "./commands/group.js";
 import { registerConvCommands } from "./commands/conv.js";
 import { registerAccountCommands } from "./commands/account.js";
+import { registerListenCommand } from "./commands/listen.js";
 import { autoLogin } from "./core/zalo-client.js";
 import { checkForUpdates, selfUpdate } from "./utils/update-check.js";
 import { success, error } from "./utils/output.js";
@@ -63,5 +64,6 @@ registerFriendCommands(program);
 registerGroupCommands(program);
 registerConvCommands(program);
 registerAccountCommands(program);
+registerListenCommand(program);
 
 program.parse();
