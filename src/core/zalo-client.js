@@ -29,9 +29,12 @@ export function isLoggedIn() {
     return _api !== null;
 }
 
-/** Create a Zalo instance with optional proxy. */
+/** Create a Zalo instance with optional proxy. Suppress logs in JSON mode. */
 function createZalo(proxyUrl) {
-    const opts = {};
+    const opts = {
+        // Suppress zca-js internal INFO logs when --json to keep stdout clean
+        logging: !process.env.ZALO_JSON_MODE,
+    };
     if (proxyUrl) {
         opts.agent = new HttpsProxyAgent(proxyUrl);
         opts.polyfill = nodefetch;
