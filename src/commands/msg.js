@@ -14,15 +14,26 @@ export function registerMsgCommands(program) {
         .description("Send a text message")
         .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
         .option(
+            "--mention <specs...>",
+            "Mention users in group message. Format: pos:userId:len (e.g. 0:USER_ID:5). Use userId=-1 for @All.",
+        )
+        .option(
             "--react <icon>",
             "Auto-react to sent message. Codes: :> (haha), /-heart (heart), /-strong (like), :o (wow), :-(( (cry), :-h (angry)",
         )
         .action(async (threadId, message, opts) => {
             try {
-                // Capture clientId before send — zca-js uses Date.now() internally
+                // Parse mention specs: "pos:uid:len" → { pos, uid, len }
+                const mentions = (opts.mention || []).map((spec) => {
+                    const [pos, uid, len] = spec.split(":");
+                    return { pos: Number(pos), uid, len: Number(len) };
+                });
+
+                // Build message content object if mentions exist
+                const msgContent = mentions.length > 0 ? { msg: message, mentions } : message;
+
                 const cliMsgId = String(Date.now());
-                const result = await getApi().sendMessage(message, threadId, Number(opts.type));
-                // Include cliMsgId in output for later use with react command
+                const result = await getApi().sendMessage(msgContent, threadId, Number(opts.type));
                 result.cliMsgId = cliMsgId;
                 output(result, program.opts().json, () => success("Message sent"));
 
