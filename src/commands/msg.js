@@ -250,6 +250,24 @@ export function registerMsgCommands(program) {
             }
         });
 
+    msg.command("undo <msgId> <threadId>")
+        .description("Recall/undo a message for both sides (like Zalo app recall). Requires cliMsgId.")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .option("-c, --cli-msg-id <id>", "Client message ID (required, get from listen --json or send --json)")
+        .action(async (msgId, threadId, opts) => {
+            try {
+                if (!opts.cliMsgId) {
+                    error("cliMsgId is required for undo. Get it from: listen --json or send --json output.");
+                    return;
+                }
+                const payload = { msgId, cliMsgId: opts.cliMsgId };
+                const result = await getApi().undo(payload, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Message recalled (undone)"));
+            } catch (e) {
+                error(`Undo failed: ${e.message}`);
+            }
+        });
+
     msg.command("forward <msgId> <threadId>")
         .description("Forward a message to another thread")
         .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
