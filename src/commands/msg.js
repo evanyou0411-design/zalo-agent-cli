@@ -234,13 +234,25 @@ export function registerMsgCommands(program) {
         .description(
             "Listen for incoming messages in real-time via WebSocket. Outputs msgId + cliMsgId needed for react. Use --json for machine parsing.",
         )
-        .action(async () => {
+        .option("-f, --filter <type>", "Filter messages: user (DM only), group (groups only), all (default)", "all")
+        .option("-w, --webhook <url>", "POST each message as JSON to this URL (for n8n, Make, etc.)")
+        .option("--no-self", "Exclude messages sent by this account")
+        .action(async (opts) => {
             try {
                 const api = getApi();
+                const jsonMode = program.opts().json;
                 info("Listening for messages... Press Ctrl+C to stop.");
                 info("Note: Only one web listener per account. Browser Zalo will disconnect.");
+                if (opts.filter !== "all") info(`Filter: ${opts.filter} messages only`);
+                if (opts.webhook) info(`Webhook: POST to ${opts.webhook}`);
 
-                api.listener.on("message", (msg) => {
+                api.listener.on("message", async (msg) => {
+                    // Filter by type: 0=User, 1=Group
+                    if (opts.filter === "user" && msg.type !== 0) return;
+                    if (opts.filter === "group" && msg.type !== 1) return;
+                    // Filter self messages
+                    if (!opts.self && msg.isSelf) return;
+
                     const content = typeof msg.data.content === "string" ? msg.data.content : "[non-text]";
                     const data = {
                         msgId: msg.data.msgId,
@@ -250,11 +262,27 @@ export function registerMsgCommands(program) {
                         isSelf: msg.isSelf,
                         content,
                     };
-                    if (program.opts().json) {
+
+                    // Output to stdout
+                    if (jsonMode) {
                         console.log(JSON.stringify(data));
                     } else {
                         const dir = msg.isSelf ? "→" : "←";
-                        console.log(`  ${dir} [${msg.threadId}] ${content}  (msgId: ${msg.data.msgId})`);
+                        const typeLabel = msg.type === 0 ? "DM" : "GR";
+                        console.log(`  ${dir} [${typeLabel}] [${msg.threadId}] ${content}  (msgId: ${msg.data.msgId})`);
+                    }
+
+                    // POST to webhook if configured
+                    if (opts.webhook) {
+                        try {
+                            await fetch(opts.webhook, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(data),
+                            });
+                        } catch {
+                            // Silent webhook failure — don't block listener
+                        }
                     }
                 });
 
