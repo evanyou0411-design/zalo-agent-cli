@@ -1,0 +1,225 @@
+/**
+ * Message commands — send text, images, files, cards, bank cards, QR transfers,
+ * stickers, reactions, delete, forward.
+ */
+
+import { resolve } from "path";
+import { getApi } from "../core/zalo-client.js";
+import { success, error, info, output } from "../utils/output.js";
+
+export function registerMsgCommands(program) {
+    const msg = program.command("msg").description("Send and manage messages");
+
+    msg.command("send <threadId> <message>")
+        .description("Send a text message")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (threadId, message, opts) => {
+            try {
+                const result = await getApi().sendMessage(message, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Message sent"));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("send-image <threadId> <paths...>")
+        .description("Send one or more images")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .option("-m, --caption <text>", "Caption text", "")
+        .action(async (threadId, paths, opts) => {
+            try {
+                const absPaths = paths.map((p) => resolve(p));
+                const result = await getApi().sendMessage(
+                    { msg: opts.caption, attachments: absPaths },
+                    threadId,
+                    Number(opts.type),
+                );
+                output(result, program.opts().json, () => success(`Image(s) sent to ${threadId}`));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("send-file <threadId> <paths...>")
+        .description("Send files (docx, pdf, zip, etc.)")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .option("-m, --caption <text>", "Caption text", "")
+        .action(async (threadId, paths, opts) => {
+            try {
+                const absPaths = paths.map((p) => resolve(p));
+                const result = await getApi().sendMessage(
+                    { msg: opts.caption, attachments: absPaths },
+                    threadId,
+                    Number(opts.type),
+                );
+                output(result, program.opts().json, () => success(`File(s) sent to ${threadId}`));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("send-card <threadId> <userId>")
+        .description("Send a contact card (danh thiếp)")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .option("--phone <num>", "Phone number (auto-fetched if omitted)")
+        .action(async (threadId, userId, opts) => {
+            try {
+                const api = getApi();
+                let phone = opts.phone;
+                if (!phone) {
+                    const userInfo = await api.getUserInfo(userId);
+                    const profiles = userInfo?.changed_profiles || {};
+                    phone = profiles[userId]?.phoneNumber || "";
+                    if (phone) info(`Auto-detected phone: ${phone}`);
+                }
+                const cardOpts = { userId };
+                if (phone) cardOpts.phoneNumber = phone;
+                const result = await api.sendCard(cardOpts, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Card sent"));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("send-bank <threadId> <accountNumber>")
+        .description("Send a bank card (số tài khoản)")
+        .requiredOption("-b, --bank <name>", "Bank name (ocb, vcb, bidv) or BIN code")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .option("-n, --name <holder>", "Account holder name")
+        .action(async (threadId, accountNumber, opts) => {
+            try {
+                const { resolveBankBin, BIN_TO_DISPLAY } = await import("../utils/bank-helpers.js");
+                const bin = resolveBankBin(opts.bank);
+                if (!bin) {
+                    error(`Unknown bank: '${opts.bank}'`);
+                    return;
+                }
+                info(`Bank: ${BIN_TO_DISPLAY[bin] || bin} (BIN ${bin})`);
+
+                const payload = { binBank: bin, numAccBank: accountNumber };
+                if (opts.name) payload.nameAccBank = opts.name;
+                const result = await getApi().sendBankCard(payload, threadId, Number(opts.type));
+                output(result, program.opts().json, () =>
+                    success(`Bank card sent: ${BIN_TO_DISPLAY[bin]} / ${accountNumber}`),
+                );
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("send-qr-transfer <threadId> <accountNumber>")
+        .description("Generate VietQR and send as image")
+        .requiredOption("-b, --bank <name>", "Bank name or BIN code")
+        .option("-a, --amount <n>", "Transfer amount in VND", parseInt)
+        .option("-m, --content <text>", "Transfer content (max 50 chars)")
+        .option("--template <tpl>", "QR style: compact, print, qronly", "compact")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (threadId, accountNumber, opts) => {
+            try {
+                const { resolveBankBin, BIN_TO_DISPLAY, generateQrTransferImage } =
+                    await import("../utils/bank-helpers.js");
+                const bin = resolveBankBin(opts.bank);
+                if (!bin) {
+                    error(`Unknown bank: '${opts.bank}'`);
+                    return;
+                }
+                if (opts.content && opts.content.length > 50) {
+                    error(`Content too long (${opts.content.length} chars). VietQR max is 50.`);
+                    return;
+                }
+                info(
+                    `Generating QR: ${BIN_TO_DISPLAY[bin]} / ${accountNumber}${opts.amount ? ` / ${opts.amount.toLocaleString()}đ` : ""}`,
+                );
+
+                const qrPath = await generateQrTransferImage(
+                    bin,
+                    accountNumber,
+                    opts.amount,
+                    opts.content,
+                    opts.template,
+                );
+                if (!qrPath) {
+                    error("Failed to generate QR image");
+                    return;
+                }
+
+                const caption = [
+                    `QR chuyển khoản ${BIN_TO_DISPLAY[bin]} - ${accountNumber}`,
+                    opts.amount ? `${opts.amount.toLocaleString()}đ` : null,
+                    opts.content || null,
+                ]
+                    .filter(Boolean)
+                    .join(" - ");
+
+                const result = await getApi().sendMessage(
+                    { msg: caption, attachments: [qrPath] },
+                    threadId,
+                    Number(opts.type),
+                );
+
+                // Cleanup temp file
+                try {
+                    (await import("fs")).unlinkSync(qrPath);
+                } catch {}
+
+                output(result, program.opts().json, () => success(`QR transfer sent to ${threadId}`));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("sticker <threadId> <keyword>")
+        .description("Search and send a sticker")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (threadId, keyword, opts) => {
+            try {
+                const api = getApi();
+                const search = await api.searchSticker(keyword);
+                const stickerId = search?.[0]?.stickerId || "";
+                if (!stickerId) {
+                    error("No sticker found");
+                    return;
+                }
+                const result = await api.sendSticker(stickerId, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Sticker sent"));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("react <msgId> <threadId> <reaction>")
+        .description("React to a message with an emoji")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (msgId, threadId, reaction, opts) => {
+            try {
+                const result = await getApi().addReaction(reaction, msgId, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success(`Reacted with '${reaction}'`));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("delete <msgId> <threadId>")
+        .description("Delete a message you sent")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (msgId, threadId, opts) => {
+            try {
+                const result = await getApi().deleteMessage(msgId, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Message deleted"));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    msg.command("forward <msgId> <threadId>")
+        .description("Forward a message to another thread")
+        .option("-t, --type <n>", "Thread type: 0=User, 1=Group", "0")
+        .action(async (msgId, threadId, opts) => {
+            try {
+                const result = await getApi().forwardMessage(msgId, threadId, Number(opts.type));
+                output(result, program.opts().json, () => success("Message forwarded"));
+            } catch (e) {
+                error(e.message);
+            }
+        });
+}

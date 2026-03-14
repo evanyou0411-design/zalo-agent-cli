@@ -1,0 +1,48 @@
+{
+  "name": "zalo-agent-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for Zalo automation — multi-account, proxy support, bank transfers, QR payments",
+  "type": "module",
+  "bin": {
+    "zalo-agent": "./src/index.js"
+  },
+  "main": "./src/index.js",
+  "files": [
+    "src/",
+    "LICENSE",
+    "DISCLAIMER.md"
+  ],
+  "scripts": {
+    "test": "node --test src/*.test.js src/**/*.test.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/"
+  },
+  "keywords": [
+    "zalo",
+    "cli",
+    "automation",
+    "messaging",
+    "vietnam",
+    "proxy",
+    "vietqr",
+    "zca-js"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^14.0.3",
+    "https-proxy-agent": "^8.0.0",
+    "node-fetch": "^3.3.0",
+    "qrcode-terminal": "^0.12.0",
+    "zca-js": "^2.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.3",
+    "prettier": "^3.8.1"
+  }
+}
