@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mascot.png" width="200" alt="zalo-agent-cli mascot" />
+</p>
+
 # zalo-agent-cli
 
 CLI tool for Zalo automation — multi-account, proxy support, bank transfers, QR payments.
