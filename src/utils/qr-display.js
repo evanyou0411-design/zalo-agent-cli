@@ -1,19 +1,21 @@
 /**
  * Cross-platform QR display utility.
- * Outputs QR in multiple formats for maximum compatibility:
- * 1. ASCII QR in terminal (if TTY)
+ * Displays Zalo's official QR PNG inline in terminal and saves to file.
+ *
+ * IMPORTANT: Uses Zalo-server-generated PNG (via event.data.image base64),
+ * NOT qrcode-terminal which re-encodes the token text into a different QR
+ * that Zalo app cannot recognize as a login request.
+ *
+ * Display methods:
+ * 1. iTerm2/Kitty/WezTerm inline image (renders PNG directly in terminal)
  * 2. Save PNG to config dir
  * 3. Base64 data URL (for IDE/agent preview)
  * 4. File path with platform-specific open hint
- *
- * IMPORTANT: This function must be synchronous-safe because zca-js
- * calls the QR callback synchronously. File save is fire-and-forget.
  */
 
 import { resolve } from "path";
 import { writeFileSync, mkdirSync } from "fs";
 import { platform } from "os";
-import qrcode from "qrcode-terminal";
 import { CONFIG_DIR } from "../core/credentials.js";
 import { info } from "./output.js";
 
@@ -31,26 +33,23 @@ function getOpenCommand() {
     }
 }
 
-/** Check if running in headless/CI environment. */
-function isHeadless() {
-    return !process.stdout.isTTY || process.env.CI === "true" || process.env.CI === "1";
-}
-
 /**
  * Display QR code from a zca-js login QR event.
  * Synchronous — safe to call from zca-js callback.
  * @param {object} event - zca-js QR callback event
  */
 export function displayQR(event) {
-    const code = event.data?.code || "";
     const imageB64 = event.data?.image || "";
 
-    // 1. ASCII QR in terminal (skip in headless — unreadable in CI logs)
-    if (code && !isHeadless()) {
-        qrcode.generate(code, { small: true });
+    // 1. Display Zalo's official QR PNG inline in terminal
+    // Uses iTerm2 inline image protocol (also WezTerm, Hyper, Kitty)
+    // Terminals that don't support it simply ignore the escape sequence
+    if (imageB64) {
+        const b64ForTerm = Buffer.from(imageB64, "base64").toString("base64");
+        process.stdout.write(`\x1b]1337;File=inline=1;width=30;preserveAspectRatio=1:${b64ForTerm}\x07\n`);
     }
 
-    // 2. Save PNG to config dir from base64 image data
+    // 2. Save PNG to config dir
     if (imageB64) {
         try {
             mkdirSync(CONFIG_DIR, { recursive: true });
@@ -61,7 +60,7 @@ export function displayQR(event) {
         } catch {}
     }
 
-    // 3. Also fire-and-forget the zca-js built-in save (different format)
+    // 3. Also fire-and-forget the zca-js built-in save
     if (event.actions?.saveToFile) {
         event.actions.saveToFile(QR_PATH).catch(() => {});
     }
@@ -70,7 +69,6 @@ export function displayQR(event) {
     if (imageB64) {
         info("QR data URL (for IDE preview):");
         console.log(`  data:image/png;base64,${imageB64.substring(0, 100)}...`);
-        // Full URL available in file — truncated here to avoid flooding terminal
     }
 }
 

@@ -38,7 +38,6 @@
     "commander": "^14.0.3",
     "https-proxy-agent": "^8.0.0",
     "node-fetch": "^3.3.0",
-    "qrcode-terminal": "^0.12.0",
     "zca-js": "^2.1.1"
   },
   "devDependencies": {
