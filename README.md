@@ -80,13 +80,32 @@ A QR code PNG will be saved and a local HTTP server starts automatically. Open t
 
 > **Important:** Use Zalo's built-in QR scanner (not regular phone camera). The QR expires in ~60 seconds.
 
-#### 2. Send a message
+#### 2. Find a thread ID
+
+A `thread_id` is a user ID (for DMs) or group ID (for group chats). You need it for most messaging commands.
 
 ```bash
-zalo-agent msg send <THREAD_ID> "Hello from zalo-agent!"
+# Search friends by name → get their thread_id
+zalo-agent friend search "Phúc"
+
+# List recent conversations (friends + groups) with thread_id
+zalo-agent conv recent
+
+# List only groups
+zalo-agent conv recent --groups-only
 ```
 
-#### 3. List friends
+#### 3. Send a message
+
+```bash
+# Send to a user (type 0, default)
+zalo-agent msg send <THREAD_ID> "Hello from zalo-agent!"
+
+# Send to a group (type 1)
+zalo-agent msg send <THREAD_ID> "Hello group!" -t 1
+```
+
+#### 4. List friends
 
 ```bash
 zalo-agent friend list
@@ -140,6 +159,7 @@ zalo-agent whoami
 | Command | Description |
 |---------|-------------|
 | `friend list` | List all friends |
+| `friend search <name>` | Search friends by name (get thread_id) |
 | `friend online` | List online friends |
 | `friend find <query>` | Find by phone or ID |
 | `friend info <userId>` | Get user profile |
@@ -168,6 +188,7 @@ zalo-agent whoami
 
 | Command | Description |
 |---------|-------------|
+| `conv recent [-n limit] [--friends-only] [--groups-only]` | List recent conversations with thread_id |
 | `conv pinned` | List pinned |
 | `conv archived` | List archived |
 | `conv mute <threadId> [-t 0\|1] [-d secs]` | Mute (-1 = forever) |
@@ -365,13 +386,32 @@ zalo-agent login
 
 HTTP server tự khởi động và hiện URL (ví dụ `http://ip:18927/qr`). Mở URL trên trình duyệt, quét bằng **Zalo app > Quét mã QR** (không dùng camera thường). Thông tin đăng nhập tự động lưu tại `~/.zalo-agent-cli/`.
 
-#### 2. Gửi tin nhắn
+#### 2. Tìm thread ID
+
+`thread_id` là ID của người dùng (tin nhắn riêng) hoặc ID nhóm (nhóm chat). Bạn cần nó cho hầu hết các lệnh gửi tin.
 
 ```bash
-zalo-agent msg send <THREAD_ID> "Xin chào!"
+# Tìm bạn bè theo tên → lấy thread_id
+zalo-agent friend search "Phúc"
+
+# Xem danh sách hội thoại gần đây (bạn bè + nhóm) kèm thread_id
+zalo-agent conv recent
+
+# Chỉ xem nhóm
+zalo-agent conv recent --groups-only
 ```
 
-#### 3. Xem danh sách bạn bè
+#### 3. Gửi tin nhắn
+
+```bash
+# Gửi cho cá nhân (type 0, mặc định)
+zalo-agent msg send <THREAD_ID> "Xin chào!"
+
+# Gửi vào nhóm (type 1)
+zalo-agent msg send <THREAD_ID> "Xin chào nhóm!" -t 1
+```
+
+#### 4. Xem danh sách bạn bè
 
 ```bash
 zalo-agent friend list

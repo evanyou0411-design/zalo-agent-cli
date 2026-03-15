@@ -3,10 +3,94 @@
  */
 
 import { getApi } from "../core/zalo-client.js";
-import { success, error, output } from "../utils/output.js";
+import { success, error, info, output } from "../utils/output.js";
 
 export function registerConvCommands(program) {
     const conv = program.command("conv").description("Manage conversations");
+
+    conv.command("recent")
+        .description("List recent conversations with thread_id (friends + groups)")
+        .option("-n, --limit <n>", "Max results per type", "20")
+        .option("--friends-only", "Show only friend conversations")
+        .option("--groups-only", "Show only group conversations")
+        .action(async (opts) => {
+            try {
+                const api = getApi();
+                const limit = Number(opts.limit);
+                const conversations = [];
+
+                // Fetch friends (sorted by lastActionTime = most recent interaction)
+                if (!opts.groupsOnly) {
+                    const friends = await api.getAllFriends();
+                    const list = Array.isArray(friends) ? friends : [];
+                    const sorted = list
+                        .filter((f) => f.lastActionTime > 0)
+                        .sort((a, b) => b.lastActionTime - a.lastActionTime)
+                        .slice(0, limit);
+                    for (const f of sorted) {
+                        conversations.push({
+                            threadId: f.userId,
+                            name: f.displayName || f.zaloName || "?",
+                            type: "User",
+                            typeFlag: 0,
+                            lastActive: new Date(f.lastActionTime * 1000).toLocaleString(),
+                        });
+                    }
+                }
+
+                // Fetch groups
+                if (!opts.friendsOnly) {
+                    const groupsResult = await api.getAllGroups();
+                    const groupIds = Object.keys(groupsResult?.gridVerMap || {});
+                    if (groupIds.length > 0) {
+                        const batchSize = 50;
+                        const batches = [];
+                        for (let i = 0; i < Math.min(groupIds.length, limit); i += batchSize) {
+                            batches.push(groupIds.slice(i, i + batchSize));
+                        }
+                        for (const batch of batches) {
+                            try {
+                                const groupInfo = await api.getGroupInfo(batch);
+                                const map = groupInfo?.gridInfoMap || {};
+                                for (const [gid, g] of Object.entries(map)) {
+                                    conversations.push({
+                                        threadId: gid,
+                                        name: g.name || "?",
+                                        type: "Group",
+                                        typeFlag: 1,
+                                        memberCount: g.totalMember || 0,
+                                    });
+                                }
+                            } catch {
+                                // Skip failed batch
+                            }
+                        }
+                    }
+                }
+
+                output(conversations, program.opts().json, () => {
+                    if (conversations.length === 0) {
+                        error("No conversations found.");
+                        return;
+                    }
+                    info(`${conversations.length} conversation(s):`);
+                    console.log();
+                    console.log("  THREAD_ID               TYPE    NAME");
+                    console.log("  " + "-".repeat(60));
+                    for (const c of conversations) {
+                        const typeLabel = c.type === "Group" ? `Group(${c.memberCount})` : "User";
+                        const id = c.threadId.padEnd(22);
+                        console.log(`  ${id}  ${typeLabel.padEnd(12)}  ${c.name}`);
+                    }
+                    console.log();
+                    info("Use thread_id with messaging commands:");
+                    info('  zalo-agent msg send <thread_id> "Hello"           (User)');
+                    info('  zalo-agent msg send <thread_id> "Hello" -t 1      (Group)');
+                });
+            } catch (e) {
+                error(e.message);
+            }
+        });
 
     conv.command("pinned")
         .description("List pinned conversations")

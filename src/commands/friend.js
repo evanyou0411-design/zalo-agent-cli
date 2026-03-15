@@ -46,6 +46,39 @@ export function registerFriendCommands(program) {
         });
 
     friend
+        .command("search <name>")
+        .description("Search friends by name (returns thread_id for messaging)")
+        .action(async (name) => {
+            try {
+                const result = await getApi().getAllFriends();
+                const friends = Array.isArray(result) ? result : [];
+                const query = name.toLowerCase();
+                const matches = friends.filter((f) => {
+                    const dn = (f.displayName || "").toLowerCase();
+                    const zn = (f.zaloName || "").toLowerCase();
+                    return dn.includes(query) || zn.includes(query);
+                });
+                output(matches, program.opts().json, () => {
+                    if (matches.length === 0) {
+                        error(`No friends matching "${name}". Use "friend list" to see all.`);
+                        return;
+                    }
+                    info(`${matches.length} friend(s) matching "${name}":`);
+                    console.log();
+                    for (const f of matches) {
+                        const display = f.displayName || f.zaloName || "?";
+                        console.log(`  ${f.userId}  ${display}`);
+                    }
+                    console.log();
+                    info("Use the ID above as thread_id for messaging commands.");
+                    info('Example: zalo-agent msg send <thread_id> "Hello"');
+                });
+            } catch (e) {
+                error(e.message);
+            }
+        });
+
+    friend
         .command("find <query>")
         .description("Find user by phone number or Zalo ID")
         .action(async (query) => {
