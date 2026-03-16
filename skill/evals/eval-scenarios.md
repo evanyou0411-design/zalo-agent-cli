@@ -88,19 +88,20 @@ Each scenario: user prompt → expected step-by-step reasoning → validation cr
 
 ---
 
-## E06: VietQR Transfer
+## E06: QR Transfer (natural prompt, no "VietQR" keyword)
 
-**Prompt:** "Generate VietQR for 500k to VCB 9876543210 and send to group 22222 with note 'Payment June'"
+**Prompt:** "Gửi mã QR chuyển khoản 500k vào tài khoản VCB 9876543210 cho nhóm 22222, ghi chú thanh toán tháng 6"
 
 **Expected reasoning:**
-1. VietQR → `send-qr-transfer`
+1. "mã QR chuyển khoản" = VietQR transfer → `send-qr-transfer` (not `send-bank`)
 2. Group → `-t 1`
-3. Amount 500k = 500000
-4. Content max 50 chars → "Payment June" (13 chars OK)
-5. Construct → `zalo-agent msg send-qr-transfer 22222 9876543210 --bank vcb --amount 500000 --content "Payment June" -t 1`
+3. 500k = 500000
+4. Bank = VCB → `--bank vcb`
+5. "ghi chú thanh toán tháng 6" → `--content "thanh toan thang 6"` (max 50 chars, no diacritics in VietQR content)
+6. Construct → `zalo-agent msg send-qr-transfer 22222 9876543210 --bank vcb --amount 500000 --content "thanh toan thang 6" -t 1`
 
-**Must include:** `send-qr-transfer`, `--bank`, `--amount`, `--content`, `-t 1`
-**Must NOT:** Use `send-bank`, forget `-t 1`
+**Must include:** `send-qr-transfer`, `--bank vcb`, `--amount 500000`, `-t 1`
+**Must NOT:** Use `send-bank` (that's bank card, not QR), forget `-t 1` for group
 
 ---
 
