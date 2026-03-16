@@ -14,7 +14,8 @@ Built on [zca-js](https://github.com/RFS-ADRENO/zca-js).
 
 **[Tiếng Việt](https://github.com/PhucMPham/zalo-agent-cli/wiki/Ti%E1%BA%BFng-Vi%E1%BB%87t)** | **[English](#quick-start)**
 
-> **Warning:** Unofficial Zalo API — your account may be banned. Use at your own risk.
+> [!WARNING]
+> This tool uses **unofficial** Zalo APIs ([zca-js](https://github.com/RFS-ADRENO/zca-js)). Zalo does not support this and **your account may be locked or banned**. Use at your own risk. Not affiliated with Zalo or VNG Corporation. See [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
