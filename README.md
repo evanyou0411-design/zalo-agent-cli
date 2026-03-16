@@ -17,6 +17,15 @@ Xây dựng trên [zca-js](https://github.com/RFS-ADRENO/zca-js).
 > [!WARNING]
 > Tool này sử dụng API Zalo **không chính thức** ([zca-js](https://github.com/RFS-ADRENO/zca-js)). Zalo không hỗ trợ và **tài khoản của bạn có thể bị khóa hoặc ban**. Tự chịu trách nhiệm. Không liên kết với Zalo hay VNG. Xem [DISCLAIMER.md](DISCLAIMER.md).
 
+> [!TIP]
+> **AI Agent Skill** — Dùng với OpenClaw, Claude Code, hoặc bất kỳ agent nào hỗ trợ SKILL.md:
+> ```bash
+> clawhub install zalo-agent          # OpenClaw (từ ClawHub registry)
+> cp -r skill/ ~/.claude/skills/zalo-agent/   # Claude Code
+> ```
+> 15+ nhóm lệnh · listen mode + webhook · 55+ ngân hàng VN · đa tài khoản + proxy
+> Xem [skill/SKILL.md](skill/SKILL.md) · [Eval scenarios](skill/evals/)
+
 ---
 
 ## Cài đặt
@@ -112,6 +121,15 @@ Nếu tool này giúp bạn tiết kiệm thời gian, hãy mua cho chúng tôi 
 ## English
 
 CLI tool for Zalo automation — multi-account, proxy support, bank transfers, QR payments.
+
+> [!TIP]
+> **AI Agent Skill** — Use with OpenClaw, Claude Code, or any SKILL.md-compatible agent:
+> ```bash
+> clawhub install zalo-agent                    # OpenClaw (from ClawHub registry)
+> cp -r skill/ ~/.claude/skills/zalo-agent/     # Claude Code
+> ```
+> 15+ command groups · listen mode + webhook · 55+ VN banks · multi-account + proxy
+> See [skill/SKILL.md](skill/SKILL.md) · [Eval scenarios](skill/evals/)
 
 ### Quick Start
 
