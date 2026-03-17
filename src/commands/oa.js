@@ -75,7 +75,8 @@ export function registerOACommands(program) {
             // Open browser (skip on VPS/headless — user copies URL manually)
             if (!opts.callbackHost) {
                 const { exec } = await import("node:child_process");
-                const openCmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+                const openCmd =
+                    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
                 exec(`${openCmd} "${authUrl}"`);
             }
 
@@ -104,30 +105,33 @@ export function registerOACommands(program) {
                     const tokenData = await exchangeCode(code, opts.appId, opts.secret, redirectUri);
 
                     if (tokenData.error) {
-                        throw new Error(`Token error ${tokenData.error}: ${tokenData.error_description || tokenData.error_name}`);
+                        throw new Error(
+                            `Token error ${tokenData.error}: ${tokenData.error_description || tokenData.error_name}`,
+                        );
                     }
 
                     // Save all credentials
-                    saveOACreds({
-                        appId: opts.appId,
-                        secretKey: opts.secret,
-                        accessToken: tokenData.access_token,
-                        refreshToken: tokenData.refresh_token,
-                        expiresIn: tokenData.expires_in,
-                        oaId: oaId || opts.oaId,
-                    }, opts.oaId);
+                    saveOACreds(
+                        {
+                            appId: opts.appId,
+                            secretKey: opts.secret,
+                            accessToken: tokenData.access_token,
+                            refreshToken: tokenData.refresh_token,
+                            expiresIn: tokenData.expires_in,
+                            oaId: oaId || opts.oaId,
+                        },
+                        opts.oaId,
+                    );
 
                     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
                     res.end("<h2>Login successful!</h2><p>You can close this tab and return to the terminal.</p>");
 
-                    output(
-                        { ok: true, oaId: oaId || opts.oaId, expires_in: tokenData.expires_in },
-                        json(),
-                        () => {
-                            success(`OA logged in successfully (OA ID: ${oaId || opts.oaId})`);
-                            info(`Token expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h — use 'oa refresh' to renew`);
-                        },
-                    );
+                    output({ ok: true, oaId: oaId || opts.oaId, expires_in: tokenData.expires_in }, json(), () => {
+                        success(`OA logged in successfully (OA ID: ${oaId || opts.oaId})`);
+                        info(
+                            `Token expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h — use 'oa refresh' to renew`,
+                        );
+                    });
                 } catch (e) {
                     res.writeHead(500, { "Content-Type": "text/html; charset=utf-8" });
                     res.end(`<h2>Login failed</h2><p>${e.message}</p>`);
@@ -162,17 +166,20 @@ export function registerOACommands(program) {
                 }
                 const tokenData = await refreshAccessToken(creds.refreshToken, creds.appId, creds.secretKey);
                 if (tokenData.error) {
-                    throw new Error(`Refresh error ${tokenData.error}: ${tokenData.error_description || tokenData.error_name}`);
+                    throw new Error(
+                        `Refresh error ${tokenData.error}: ${tokenData.error_description || tokenData.error_name}`,
+                    );
                 }
-                saveOACreds({
-                    accessToken: tokenData.access_token,
-                    refreshToken: tokenData.refresh_token,
-                    expiresIn: tokenData.expires_in,
-                }, opts.oaId);
-                output(
-                    { ok: true, expires_in: tokenData.expires_in },
-                    json(),
-                    () => success(`Token refreshed. Expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h`),
+                saveOACreds(
+                    {
+                        accessToken: tokenData.access_token,
+                        refreshToken: tokenData.refresh_token,
+                        expiresIn: tokenData.expires_in,
+                    },
+                    opts.oaId,
+                );
+                output({ ok: true, expires_in: tokenData.expires_in }, json(), () =>
+                    success(`Token refreshed. Expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h`),
                 );
             } catch (e) {
                 error(e.message);
@@ -185,9 +192,7 @@ export function registerOACommands(program) {
         .action(async (accessToken, opts) => {
             try {
                 saveOAToken(accessToken, opts.oaId);
-                output({ ok: true, oaId: opts.oaId }, json(), () =>
-                    success(`OA token saved for "${opts.oaId}"`),
-                );
+                output({ ok: true, oaId: opts.oaId }, json(), () => success(`OA token saved for "${opts.oaId}"`));
             } catch (e) {
                 error(e.message);
             }
@@ -465,12 +470,7 @@ export function registerOACommands(program) {
         .option("--oa-id <id>", "OA identifier", "default")
         .action(async (userId, opts) => {
             try {
-                const result = await getConversation(
-                    userId,
-                    Number(opts.offset),
-                    Number(opts.count),
-                    opts.oaId,
-                );
+                const result = await getConversation(userId, Number(opts.offset), Number(opts.count), opts.oaId);
                 output(result, json(), () => {
                     const msgs = result.data || [];
                     info(`Messages: ${Array.isArray(msgs) ? msgs.length : "see JSON"}`);
@@ -483,7 +483,7 @@ export function registerOACommands(program) {
     // ─── Menu ────────────────────────────────────────────────────────
 
     oa.command("menu <menu-json>")
-        .description('Update OA menu. menu-json: \'{"buttons":[...]}\'')
+        .description("Update OA menu. menu-json: '{\"buttons\":[...]}'")
         .option("--oa-id <id>", "OA identifier", "default")
         .action(async (menuJson, opts) => {
             try {
@@ -521,11 +521,7 @@ export function registerOACommands(program) {
         .option("--oa-id <id>", "OA identifier", "default")
         .action(async (opts) => {
             try {
-                const result = await getArticleList(
-                    Number(opts.offset),
-                    Number(opts.limit),
-                    opts.oaId,
-                );
+                const result = await getArticleList(Number(opts.offset), Number(opts.limit), opts.oaId);
                 output(result, json(), () => {
                     const articles = result.data?.articles || [];
                     info(`Articles: ${articles.length}`);
@@ -579,11 +575,7 @@ export function registerOACommands(program) {
         .option("--oa-id <id>", "OA identifier", "default")
         .action(async (opts) => {
             try {
-                const result = await getProductList(
-                    Number(opts.offset),
-                    Number(opts.limit),
-                    opts.oaId,
-                );
+                const result = await getProductList(Number(opts.offset), Number(opts.limit), opts.oaId);
                 output(result, json(), () => {
                     const products = result.data?.products || [];
                     info(`Products: ${products.length}`);

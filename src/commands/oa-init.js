@@ -14,13 +14,7 @@
 import { createServer } from "node:http";
 import { createInterface } from "node:readline";
 import { exec } from "node:child_process";
-import {
-    saveOACreds,
-    loadOACreds,
-    getOAuthUrl,
-    exchangeCode,
-    getOAProfile,
-} from "../core/oa-client.js";
+import { saveOACreds, loadOACreds, getOAuthUrl, exchangeCode, getOAProfile } from "../core/oa-client.js";
 import { success, error, info, warning, output } from "../utils/output.js";
 
 /** Prompt user for input. In agent mode, returns the provided default. */
@@ -43,8 +37,7 @@ async function waitForEnter(msg, agentMode) {
 
 /** Open URL in default browser. */
 function openBrowser(url) {
-    const cmd =
-        process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+    const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
     exec(`${cmd} "${url}"`);
 }
 
@@ -82,9 +75,7 @@ async function runOAuthLogin(appId, secretKey, oaId, callbackPort = 3456) {
             try {
                 const data = await exchangeCode(code, appId, secretKey, redirectUri);
                 if (data.error) {
-                    throw new Error(
-                        `Token error ${data.error}: ${data.error_description || data.error_name}`,
-                    );
+                    throw new Error(`Token error ${data.error}: ${data.error_description || data.error_name}`);
                 }
                 saveOACreds(
                     {
@@ -205,16 +196,11 @@ async function startTunnel(tunnelCmd, port) {
 export function registerOAInitCommand(oaCommand, program) {
     oaCommand
         .command("init")
-        .description(
-            "Setup wizard for Zalo OA — works interactive (human) and non-interactive (agent)",
-        )
+        .description("Setup wizard for Zalo OA — works interactive (human) and non-interactive (agent)")
         .option("--oa-id <id>", "OA identifier for multi-OA support", "default")
         .option("--app-id <id>", "Zalo App ID (non-interactive mode)")
         .option("--secret <key>", "Zalo App Secret Key (non-interactive mode)")
-        .option(
-            "--tunnel <type>",
-            "Tunnel type: ngrok | cloudflared | none (non-interactive mode)",
-        )
+        .option("--tunnel <type>", "Tunnel type: ngrok | cloudflared | none (non-interactive mode)")
         .option("--webhook-url <url>", "Pre-existing webhook URL (VPS, n8n, etc.)")
         .option("--verify-code <code>", "Zalo domain verification code")
         .option("-p, --port <port>", "Webhook listener port", "3000")
@@ -302,9 +288,7 @@ export function registerOAInitCommand(oaCommand, program) {
                     result.steps.push("oauth_login_ok");
                     result.expiresIn = tokenData.expires_in;
                     if (!agentMode) {
-                        success(
-                            `Logged in! Token expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h`,
-                        );
+                        success(`Logged in! Token expires in ${Math.round((tokenData.expires_in || 86400) / 3600)}h`);
                     }
                 } catch (e) {
                     result.ok = false;
@@ -420,7 +404,9 @@ export function registerOAInitCommand(oaCommand, program) {
                             if (wantVerify.toLowerCase() === "y") {
                                 const vc = await ask("  Verification code: ", false);
                                 if (vc) {
-                                    console.log(`\n  Meta tag: <meta name="zalo-platform-site-verification" content="${vc}" />`);
+                                    console.log(
+                                        `\n  Meta tag: <meta name="zalo-platform-site-verification" content="${vc}" />`,
+                                    );
                                     console.log(`  Or serve at: /zalo_verifier${vc}.html\n`);
                                 }
                             }

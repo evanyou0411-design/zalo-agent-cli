@@ -42,18 +42,13 @@ export function registerOAListenCommand(oaCommand, program) {
         .option("-p, --port <port>", "Listen port", "3000")
         .option("-s, --secret <key>", "OA Secret Key for MAC verification (from developers.zalo.me)")
         .option("--no-verify", "Skip MAC verification (not recommended)")
-        .option(
-            "-e, --events <list>",
-            `Comma-separated event filter: ${ALL_EVENTS.join(",")}`,
-            "all",
-        )
+        .option("-e, --events <list>", `Comma-separated event filter: ${ALL_EVENTS.join(",")}`, "all")
         .option("--path <path>", "Webhook URL path", "/webhook")
         .option("--verify-domain <code>", "Zalo domain verification code (serves /zalo_verifier<code>.html)")
         .action(async (opts) => {
             const json = () => program.opts().json;
             const port = Number(opts.port);
-            const eventFilter =
-                opts.events === "all" ? null : opts.events.split(",").map((e) => e.trim());
+            const eventFilter = opts.events === "all" ? null : opts.events.split(",").map((e) => e.trim());
 
             if (!opts.secret && opts.verify) {
                 warning("No --secret provided. MAC verification disabled. Use --secret for security.");
