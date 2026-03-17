@@ -30,6 +30,18 @@ Xây dựng trên [zca-js](https://github.com/RFS-ADRENO/zca-js).
 > 15+ nhóm lệnh · listen mode + webhook · 55+ ngân hàng VN · đa tài khoản + proxy
 > Xem [skill/SKILL.md](skill/SKILL.md) · [Eval scenarios](skill/evals/)
 
+> [!NOTE]
+> **Zalo Official Account (OA)** — v1.1.0 hỗ trợ Zalo OA API v3.0 chính thức:
+> ```bash
+> zalo-agent oa init                                    # Setup wizard (interactive)
+> zalo-agent oa init --app-id <ID> --secret <KEY> --skip-webhook  # Non-interactive (AI agent)
+> zalo-agent oa whoami                                  # Xem thông tin OA
+> zalo-agent oa msg text <user-id> "Xin chào"           # Gửi tin nhắn
+> zalo-agent oa listen -p 3000                           # Webhook listener
+> ```
+> OAuth login · gửi tin nhắn · quản lý follower · tag · webhook listener · VPS support
+> Xem [docs/official-account.md](docs/official-account.md)
+
 ---
 
 ## Cài đặt
@@ -137,6 +149,18 @@ CLI tool for Zalo automation — multi-account, proxy support, bank transfers, Q
 > ```
 > 15+ command groups · listen mode + webhook · 55+ VN banks · multi-account + proxy
 > See [skill/SKILL.md](skill/SKILL.md) · [Eval scenarios](skill/evals/)
+
+> [!NOTE]
+> **Zalo Official Account (OA)** — v1.1.0 adds official Zalo OA API v3.0:
+> ```bash
+> zalo-agent oa init                                    # Setup wizard (interactive)
+> zalo-agent oa init --app-id <ID> --secret <KEY> --skip-webhook  # Non-interactive (AI agent)
+> zalo-agent oa whoami                                  # OA profile
+> zalo-agent oa msg text <user-id> "Hello"              # Send message
+> zalo-agent oa listen -p 3000                           # Webhook listener
+> ```
+> OAuth login · messaging · follower management · tags · webhook listener · VPS support
+> See [docs/official-account.md](docs/official-account.md)
 
 ### Quick Start
 
