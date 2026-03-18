@@ -13,6 +13,7 @@ import { createMCPServer } from "../mcp/mcp-server.js";
 import { registerTools } from "../mcp/mcp-tools.js";
 import { createHTTPServer } from "../mcp/mcp-http-transport.js";
 import { ZaloNotifier } from "../mcp/notifier.js";
+import { ThreadNameCache } from "../mcp/thread-name-cache.js";
 
 /** Zalo close code for duplicate web session — fatal, do not retry */
 const CLOSE_DUPLICATE = 3000;
@@ -73,15 +74,23 @@ export function registerMCPCommands(program) {
             const buffer = new MessageBuffer(maxSize, maxAge);
             const filter = new ThreadFilter(config);
 
+            // Build thread name cache (groups + friends → in-memory index)
+            const nameCache = new ThreadNameCache();
+            try {
+                await nameCache.init(getApi());
+            } catch (e) {
+                console.error("[mcp] Thread name cache init failed (non-fatal):", e.message);
+            }
+
             // Start MCP server — stdio (default) or HTTP
             try {
                 if (opts.http) {
                     const port = Number(opts.http);
-                    const deps = { api: getApi(), buffer, filter, config };
+                    const deps = { api: getApi(), buffer, filter, config, nameCache };
                     createHTTPServer(registerTools, deps, port, opts.auth || null);
                     console.error(`[mcp] HTTP server started on port ${port}`);
                 } else {
-                    await createMCPServer(getApi(), buffer, filter, config);
+                    await createMCPServer(getApi(), buffer, filter, config, nameCache);
                 }
             } catch (e) {
                 console.error("[mcp] Failed to start MCP server:", e.message);

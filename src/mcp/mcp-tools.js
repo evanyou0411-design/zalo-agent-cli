@@ -1,6 +1,6 @@
 /**
  * MCP tool registrations for Zalo message access and sending.
- * Registers 4 tools: zalo_get_messages, zalo_send_message, zalo_list_threads, zalo_mark_read.
+ * Registers 5 tools: zalo_get_messages, zalo_send_message, zalo_list_threads, zalo_search_threads, zalo_mark_read.
  */
 
 import { z } from "zod";
@@ -34,8 +34,9 @@ function err(message) {
  * @param {import("./message-buffer.js").MessageBuffer} buffer
  * @param {import("./thread-filter.js").ThreadFilter} filter
  * @param {object} config - MCP config
+ * @param {import("./thread-name-cache.js").ThreadNameCache} [nameCache] - Thread name cache
  */
-export function registerTools(server, api, buffer, filter, config) {
+export function registerTools(server, api, buffer, filter, config, nameCache) {
     const maxPerPoll = config.limits?.maxMessagesPerPoll ?? 20;
 
     // --- zalo_get_messages ---
@@ -54,6 +55,13 @@ export function registerTools(server, api, buffer, filter, config) {
         async ({ threadId, since, limit }) => {
             try {
                 const result = buffer.read(threadId, since, limit);
+                // Enrich messages with thread name from cache
+                if (nameCache) {
+                    for (const msg of result.messages) {
+                        const info = nameCache.get(msg.threadId);
+                        if (info) msg.threadName = info.name;
+                    }
+                }
                 return ok(result);
             } catch (e) {
                 console.error("[mcp-tools] zalo_get_messages error:", e.message);
@@ -114,12 +122,48 @@ export function registerTools(server, api, buffer, filter, config) {
                 const enriched = stats.map((t) => {
                     const thread = buffer._threads.get(t.threadId);
                     const threadType = thread?.messages?.[0]?.threadType ?? "unknown";
-                    return { ...t, threadType };
+                    const cached = nameCache?.get(t.threadId);
+                    return {
+                        ...t,
+                        threadType,
+                        name: cached?.name ?? null,
+                        ...(cached?.memberCount != null && { memberCount: cached.memberCount }),
+                    };
                 });
                 const filtered = type === "all" ? enriched : enriched.filter((t) => t.threadType === type);
                 return ok({ threads: filtered, total: filtered.length });
             } catch (e) {
                 console.error("[mcp-tools] zalo_list_threads error:", e.message);
+                return err(e.message);
+            }
+        },
+    );
+
+    // --- zalo_search_threads ---
+    server.registerTool(
+        "zalo_search_threads",
+        {
+            title: "Search Zalo Threads",
+            description:
+                "Search threads (groups/DMs) by name. Uses fuzzy Vietnamese-aware matching. Useful for finding a thread ID by name.",
+            inputSchema: z.object({
+                query: z.string().min(1).describe("Search keyword (fuzzy match, case-insensitive, accent-insensitive)"),
+                type: z
+                    .enum(["group", "dm", "all"])
+                    .default("all")
+                    .describe("Filter by thread type: 'dm', 'group', or 'all'"),
+                limit: z.number().int().min(1).max(50).default(10).describe("Max results to return"),
+            }),
+        },
+        async ({ query, type, limit }) => {
+            try {
+                if (!nameCache?.ready) {
+                    return err("Thread name cache not initialized yet. Try again shortly.");
+                }
+                const results = nameCache.search(query, type, limit);
+                return ok({ results, total: results.length });
+            } catch (e) {
+                console.error("[mcp-tools] zalo_search_threads error:", e.message);
                 return err(e.message);
             }
         },

@@ -14,15 +14,16 @@ import { registerTools } from "./mcp-tools.js";
  * @param {import("./message-buffer.js").MessageBuffer} buffer
  * @param {import("./thread-filter.js").ThreadFilter} filter
  * @param {object} config - MCP config
+ * @param {import("./thread-name-cache.js").ThreadNameCache} [nameCache] - Thread name cache
  * @returns {Promise<McpServer>}
  */
-export async function createMCPServer(api, buffer, filter, config) {
+export async function createMCPServer(api, buffer, filter, config, nameCache) {
     const server = new McpServer({
         name: "zalo-agent",
         version: "1.0.0",
     });
 
-    registerTools(server, api, buffer, filter, config);
+    registerTools(server, api, buffer, filter, config, nameCache);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
