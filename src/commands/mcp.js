@@ -14,6 +14,7 @@ import { registerTools } from "../mcp/mcp-tools.js";
 import { createHTTPServer } from "../mcp/mcp-http-transport.js";
 import { ZaloNotifier } from "../mcp/notifier.js";
 import { ThreadNameCache } from "../mcp/thread-name-cache.js";
+import { autoDownloadImage } from "../mcp/image-downloader.js";
 
 /** Zalo close code for duplicate web session — fatal, do not retry */
 const CLOSE_DUPLICATE = 3000;
@@ -119,6 +120,15 @@ export function registerMCPCommands(program) {
 
                     // Apply noise filter (stickers, system msgs, short emoji)
                     if (!filter.shouldKeep(normalized)) return;
+
+                    // Auto-download images in background (non-blocking)
+                    if (normalized.attachment?.url) {
+                        const threadName = nameCache?.get(normalized.threadId)?.name || null;
+                        autoDownloadImage(normalized, {
+                            downloadDir: config.images?.downloadDir || undefined,
+                            threadName,
+                        });
+                    }
 
                     buffer.push(normalized.threadId, normalized);
                     notifier.onMessage(normalized);

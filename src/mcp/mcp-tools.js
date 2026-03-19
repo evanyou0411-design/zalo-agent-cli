@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { downloadImage } from "./image-downloader.js";
+import { downloadImage, openFile } from "./image-downloader.js";
 
 /** Thread type constants matching zca-js ThreadType enum */
 const THREAD_USER = 0;
@@ -202,19 +202,19 @@ export function registerTools(server, api, buffer, filter, config, nameCache) {
         {
             title: "View Zalo Image",
             description:
-                "Download a Zalo image to local filesystem and optionally open it with system viewer. " +
-                "Images are organized by thread folder and named with date/sender metadata. " +
-                "Pass the message ID from zalo_get_messages to download its attached image.",
+                "Open a Zalo image with the system viewer. Images are auto-downloaded when received, " +
+                "organized by thread folder with date/sender metadata filenames. " +
+                "If not yet downloaded, downloads first then opens.",
             inputSchema: z.object({
                 messageId: z.string().describe("Message ID from zalo_get_messages that has an image attachment"),
                 threadId: z.string().optional().describe("Thread ID to search in. Omit to search all threads."),
-                autoOpen: z
+                open: z
                     .boolean()
                     .default(imgConfig.autoOpen ?? true)
-                    .describe("Open image with system viewer after download"),
+                    .describe("Open image with system viewer"),
             }),
         },
-        async ({ messageId, threadId, autoOpen }) => {
+        async ({ messageId, threadId, open }) => {
             try {
                 // Find the message in the buffer by ID
                 const allMessages = buffer.read(threadId, 0, 9999).messages;
@@ -222,16 +222,21 @@ export function registerTools(server, api, buffer, filter, config, nameCache) {
                 if (!message) return err(`Message ${messageId} not found in buffer`);
                 if (!message.attachment?.url) return err(`Message ${messageId} has no image attachment`);
 
-                // Resolve thread name for folder organization
-                const threadName = nameCache?.get(message.threadId)?.name || null;
+                // Use local file if already auto-downloaded, otherwise download now
+                let localPath = message.attachment.localPath;
+                if (!localPath) {
+                    const threadName = nameCache?.get(message.threadId)?.name || null;
+                    const result = await downloadImage(message, {
+                        downloadDir: imgConfig.downloadDir || undefined,
+                        autoOpen: false,
+                        threadName,
+                    });
+                    localPath = result.path;
+                }
 
-                const result = await downloadImage(message, {
-                    downloadDir: imgConfig.downloadDir || undefined,
-                    autoOpen,
-                    threadName,
-                });
+                if (open) openFile(localPath);
 
-                return ok(result);
+                return ok({ success: true, path: localPath });
             } catch (e) {
                 console.error("[mcp-tools] zalo_view_image error:", e.message);
                 return err(e.message);

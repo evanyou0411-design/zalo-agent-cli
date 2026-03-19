@@ -75,15 +75,38 @@ function buildFileName(message, ext) {
 
 /**
  * Open a file with the system's default viewer (cross-platform).
+ * Exported for use by MCP tools.
  * @param {string} filePath
  */
-function openWithSystemViewer(filePath) {
+export function openFile(filePath) {
     const cmds = { darwin: "open", win32: "start", linux: "xdg-open" };
     const cmd = cmds[platform()] || "xdg-open";
     // Use double quotes for paths with spaces; detach so CLI doesn't block
     exec(`${cmd} "${filePath}"`, (err) => {
         if (err) console.error(`[image-dl] Failed to open viewer: ${err.message}`);
     });
+}
+
+/**
+ * Auto-download image in background when a message arrives.
+ * Non-blocking — fires and forgets. Mutates message.attachment.localPath on success.
+ * @param {object} message - Normalized message (will be mutated with localPath)
+ * @param {object} [options]
+ * @param {string} [options.downloadDir] - Base download directory
+ * @param {string} [options.threadName] - Thread display name from cache
+ */
+export function autoDownloadImage(message, options = {}) {
+    if (!message.attachment?.url) return;
+    // Fire-and-forget: download in background, don't block message processing
+    downloadImage(message, { ...options, autoOpen: false }).then(
+        (result) => {
+            message.attachment.localPath = result.path;
+            console.error(`[image-dl] Saved: ${result.path}`);
+        },
+        (err) => {
+            console.error(`[image-dl] Auto-download failed: ${err.message}`);
+        },
+    );
 }
 
 /**
@@ -118,7 +141,7 @@ export async function downloadImage(message, options = {}) {
 
     // Auto-open with system viewer if configured
     if (options.autoOpen) {
-        openWithSystemViewer(filePath);
+        openFile(filePath);
     }
 
     return { success: true, path: filePath, folder, fileName };
