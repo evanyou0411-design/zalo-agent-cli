@@ -9,7 +9,15 @@ import { parseDuration } from "./mcp-config.js";
 const TYPE_EMOJI = { text: "💬", image: "📷", file: "📎", link: "🔗", video: "🎬", audio: "🎵", gif: "🎞️" };
 
 /** Vietnamese label per message type for notification breakdown */
-const TYPE_LABEL = { text: "text", image: "ảnh", file: "file", link: "link", video: "video", audio: "audio", gif: "gif" };
+const TYPE_LABEL = {
+    text: "text",
+    image: "ảnh",
+    file: "file",
+    link: "link",
+    video: "video",
+    audio: "audio",
+    gif: "gif",
+};
 
 export class ZaloNotifier {
     /**
@@ -70,9 +78,10 @@ export class ZaloNotifier {
         const preview = this._pending
             .slice(0, 3) // Show at most 3 message previews
             .map((m) => {
-                const prefix = TYPE_EMOJI[m.type] || "💬";
+                const type = m.type || "text";
+                const prefix = TYPE_EMOJI[type] || "💬";
                 const sender = m.senderName || m.senderId;
-                const body = m.type === "text" ? (m.text || "").slice(0, 50) : `[${TYPE_LABEL[m.type] || m.type}]`;
+                const body = type === "text" ? (m.text || "").slice(0, 50) : `[${TYPE_LABEL[type] || type}]`;
                 return `- ${sender}: ${prefix} ${body}`;
             })
             .join("\n");
