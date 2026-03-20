@@ -1,10 +1,10 @@
 /**
  * MCP tool registrations for Zalo message access and sending.
- * Registers 6 tools: zalo_get_messages, zalo_send_message, zalo_list_threads, zalo_search_threads, zalo_mark_read, zalo_view_image.
+ * Registers 6 tools: zalo_get_messages, zalo_send_message, zalo_list_threads, zalo_search_threads, zalo_mark_read, zalo_view_media.
  */
 
 import { z } from "zod";
-import { downloadImage, openFile } from "./image-downloader.js";
+import { downloadMedia, openFile } from "./media-downloader.js";
 
 /** Thread type constants matching zca-js ThreadType enum */
 const THREAD_USER = 0;
@@ -195,39 +195,38 @@ export function registerTools(server, api, buffer, filter, config, nameCache) {
         },
     );
 
-    // --- zalo_view_image ---
-    const imgConfig = config.images || {};
+    // --- zalo_view_media ---
+    const mediaConfig = config.media || {};
     server.registerTool(
-        "zalo_view_image",
+        "zalo_view_media",
         {
-            title: "View Zalo Image",
+            title: "View Zalo Media",
             description:
-                "Open a Zalo image with the system viewer. Images are auto-downloaded when received, " +
-                "organized by thread folder with date/sender metadata filenames. " +
+                "Open a Zalo media file (image, audio, video) with the system viewer. " +
+                "Media is auto-downloaded when received, organized by thread folder with date/sender metadata filenames. " +
                 "If not yet downloaded, downloads first then opens.",
             inputSchema: z.object({
-                messageId: z.string().describe("Message ID from zalo_get_messages that has an image attachment"),
+                messageId: z.string().describe("Message ID from zalo_get_messages that has a media attachment"),
                 threadId: z.string().optional().describe("Thread ID to search in. Omit to search all threads."),
                 open: z
                     .boolean()
-                    .default(imgConfig.autoOpen ?? true)
-                    .describe("Open image with system viewer"),
+                    .default(mediaConfig.autoOpen ?? true)
+                    .describe("Open media with system viewer"),
             }),
         },
         async ({ messageId, threadId, open }) => {
             try {
-                // Find the message in the buffer by ID
                 const allMessages = buffer.read(threadId, 0, 9999).messages;
                 const message = allMessages.find((m) => m.id === messageId);
                 if (!message) return err(`Message ${messageId} not found in buffer`);
-                if (!message.attachment?.url) return err(`Message ${messageId} has no image attachment`);
+                if (!message.attachment?.url) return err(`Message ${messageId} has no media attachment`);
 
                 // Use local file if already auto-downloaded, otherwise download now
                 let localPath = message.attachment.localPath;
                 if (!localPath) {
                     const threadName = nameCache?.get(message.threadId)?.name || null;
-                    const result = await downloadImage(message, {
-                        downloadDir: imgConfig.downloadDir || undefined,
+                    const result = await downloadMedia(message, {
+                        downloadDir: mediaConfig.downloadDir || undefined,
                         autoOpen: false,
                         threadName,
                     });
@@ -236,9 +235,9 @@ export function registerTools(server, api, buffer, filter, config, nameCache) {
 
                 if (open) openFile(localPath);
 
-                return ok({ success: true, path: localPath });
+                return ok({ success: true, path: localPath, mediaType: message.type });
             } catch (e) {
-                console.error("[mcp-tools] zalo_view_image error:", e.message);
+                console.error("[mcp-tools] zalo_view_media error:", e.message);
                 return err(e.message);
             }
         },

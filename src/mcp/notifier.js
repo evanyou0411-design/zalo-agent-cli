@@ -6,7 +6,16 @@
 import { parseDuration } from "./mcp-config.js";
 
 /** Emoji prefix per message type for notification previews */
-const TYPE_EMOJI = { text: "💬", image: "📷", file: "📎", link: "🔗", video: "🎬", audio: "🎵", gif: "🎞️" };
+const TYPE_EMOJI = {
+    text: "💬",
+    image: "📷",
+    file: "📎",
+    link: "🔗",
+    video: "🎬",
+    audio: "🎵",
+    voice: "🎤",
+    gif: "🎞️",
+};
 
 /** Vietnamese label per message type for notification breakdown */
 const TYPE_LABEL = {
@@ -16,6 +25,7 @@ const TYPE_LABEL = {
     link: "link",
     video: "video",
     audio: "audio",
+    voice: "voice",
     gif: "gif",
 };
 

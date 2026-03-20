@@ -1,7 +1,7 @@
 /**
- * Download Zalo images to local filesystem, organized by thread name.
+ * Download Zalo media (images, audio, video) to local filesystem, organized by thread name.
  * Folder structure: {downloadDir}/{threadName}/{date}_{time}_{sender}_{msgId}.{ext}
- * Cross-platform: opens images with system viewer (open/xdg-open/start).
+ * Cross-platform: opens media with system viewer (open/xdg-open/start).
  */
 
 import { mkdirSync, writeFileSync } from "fs";
@@ -11,10 +11,43 @@ import { exec } from "child_process";
 import { CONFIG_DIR } from "../core/credentials.js";
 
 /** Default download directory when not configured */
-const DEFAULT_DIR = join(CONFIG_DIR, "images");
+const DEFAULT_DIR = join(CONFIG_DIR, "media");
 
 /** Characters unsafe for filesystem paths — stripped from folder/file names */
 const UNSAFE_CHARS = /[/\\:*?"<>|]/g;
+
+/** Message types that have downloadable attachments */
+const DOWNLOADABLE_TYPES = new Set(["image", "video", "audio", "voice", "gif", "file"]);
+
+/** Extension lookup by content-type prefix */
+const CONTENT_TYPE_MAP = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/bmp": "bmp",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "m4a",
+    "audio/aac": "aac",
+    "audio/ogg": "ogg",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/quicktime": "mov",
+};
+
+/** Fallback extension by message type when URL and content-type give no clue */
+const TYPE_DEFAULT_EXT = {
+    image: "jpg",
+    audio: "mp3",
+    voice: "mp3",
+    video: "mp4",
+    gif: "gif",
+    file: "bin",
+};
 
 /**
  * Sanitize a string for use as a filesystem name.
@@ -26,21 +59,32 @@ function sanitize(name) {
 }
 
 /**
- * Guess file extension from URL or content-type header.
+ * Guess file extension from URL, content-type, or message type.
  * @param {string} url
  * @param {string} [contentType]
+ * @param {string} [msgType] - Normalized message type (image, audio, video, etc.)
  * @returns {string}
  */
-function guessExtension(url, contentType) {
+function guessExtension(url, contentType, msgType) {
     // Try content-type first
     if (contentType) {
-        const match = contentType.match(/image\/(jpeg|jpg|png|gif|webp|bmp)/i);
-        if (match) return match[1] === "jpeg" ? "jpg" : match[1].toLowerCase();
+        const ct = contentType.split(";")[0].trim().toLowerCase();
+        if (CONTENT_TYPE_MAP[ct]) return CONTENT_TYPE_MAP[ct];
     }
-    // Try URL path
-    const urlMatch = url.match(/\.(jpeg|jpg|png|gif|webp|bmp)(\?|$)/i);
+    // Try URL path extension
+    const urlMatch = url.match(/\.(jpeg|jpg|png|gif|webp|bmp|mp3|m4a|aac|ogg|wav|mp4|webm|mov)(\?|$)/i);
     if (urlMatch) return urlMatch[1] === "jpeg" ? "jpg" : urlMatch[1].toLowerCase();
-    return "jpg"; // safe default for Zalo CDN
+    // Fallback by message type
+    return TYPE_DEFAULT_EXT[msgType] || "bin";
+}
+
+/**
+ * Check if a message type is downloadable media.
+ * @param {string} type - Normalized message type
+ * @returns {boolean}
+ */
+export function isDownloadableMedia(type) {
+    return DOWNLOADABLE_TYPES.has(type);
 }
 
 /**
@@ -81,44 +125,42 @@ function buildFileName(message, ext) {
 export function openFile(filePath) {
     const cmds = { darwin: "open", win32: "start", linux: "xdg-open" };
     const cmd = cmds[platform()] || "xdg-open";
-    // Use double quotes for paths with spaces; detach so CLI doesn't block
     exec(`${cmd} "${filePath}"`, (err) => {
-        if (err) console.error(`[image-dl] Failed to open viewer: ${err.message}`);
+        if (err) console.error(`[media-dl] Failed to open viewer: ${err.message}`);
     });
 }
 
 /**
- * Auto-download image in background when a message arrives.
+ * Auto-download media in background when a message arrives.
  * Non-blocking — fires and forgets. Mutates message.attachment.localPath on success.
  * @param {object} message - Normalized message (will be mutated with localPath)
  * @param {object} [options]
  * @param {string} [options.downloadDir] - Base download directory
  * @param {string} [options.threadName] - Thread display name from cache
  */
-export function autoDownloadImage(message, options = {}) {
+export function autoDownloadMedia(message, options = {}) {
     if (!message.attachment?.url) return;
-    // Fire-and-forget: download in background, don't block message processing
-    downloadImage(message, { ...options, autoOpen: false }).then(
+    downloadMedia(message, { ...options, autoOpen: false }).then(
         (result) => {
             message.attachment.localPath = result.path;
-            console.error(`[image-dl] Saved: ${result.path}`);
+            console.error(`[media-dl] Saved: ${result.path}`);
         },
         (err) => {
-            console.error(`[image-dl] Auto-download failed: ${err.message}`);
+            console.error(`[media-dl] Auto-download failed: ${err.message}`);
         },
     );
 }
 
 /**
- * Download an image from URL and save to organized local folder.
+ * Download media from URL and save to organized local folder.
  * @param {object} message - Normalized message with attachment.url
  * @param {object} [options]
  * @param {string} [options.downloadDir] - Base download directory
- * @param {boolean} [options.autoOpen] - Open image after download
+ * @param {boolean} [options.autoOpen] - Open media with system viewer after download
  * @param {string} [options.threadName] - Thread display name from cache
- * @returns {Promise<{ success: boolean, path: string, folder: string, fileName: string }>}
+ * @returns {Promise<{ success: boolean, path: string, folder: string, fileName: string, mediaType: string }>}
  */
-export async function downloadImage(message, options = {}) {
+export async function downloadMedia(message, options = {}) {
     const url = message.attachment?.url;
     if (!url) throw new Error("Message has no attachment URL");
 
@@ -127,22 +169,21 @@ export async function downloadImage(message, options = {}) {
     const folderPath = join(baseDir, folder);
     mkdirSync(folderPath, { recursive: true });
 
-    // Fetch image from Zalo CDN
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Download failed: HTTP ${response.status}`);
 
     const contentType = response.headers.get("content-type") || "";
-    const ext = guessExtension(url, contentType);
+    const msgType = message.type || "file";
+    const ext = guessExtension(url, contentType, msgType);
     const fileName = buildFileName(message, ext);
     const filePath = join(folderPath, fileName);
 
     const buffer = Buffer.from(await response.arrayBuffer());
     writeFileSync(filePath, buffer);
 
-    // Auto-open with system viewer if configured
     if (options.autoOpen) {
         openFile(filePath);
     }
 
-    return { success: true, path: filePath, folder, fileName };
+    return { success: true, path: filePath, folder, fileName, mediaType: msgType };
 }
