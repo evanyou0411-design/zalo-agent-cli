@@ -5,8 +5,6 @@
 
 import fs from "fs";
 import { Zalo, LoginQRCallbackEventType } from "zca-js";
-import { HttpsProxyAgent } from "https-proxy-agent";
-import nodefetch from "node-fetch";
 import { getActive } from "./accounts.js";
 import { loadCredentials } from "./credentials.js";
 import { info } from "../utils/output.js";
@@ -99,8 +97,7 @@ function createZalo(proxyUrl) {
         imageMetadataGetter: readImageMetadata,
     };
     if (proxyUrl) {
-        opts.agent = new HttpsProxyAgent(proxyUrl);
-        opts.polyfill = nodefetch;
+        opts.proxy = proxyUrl;
     }
     return new Zalo(opts);
 }
