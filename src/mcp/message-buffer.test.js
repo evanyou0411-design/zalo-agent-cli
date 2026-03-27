@@ -265,6 +265,32 @@ describe("MessageBuffer getStats", () => {
     });
 });
 
+describe("MessageBuffer getThreadType", () => {
+    it("returns threadType from first buffered message", () => {
+        const buf = new MessageBuffer();
+        buf.push("t1", { text: "hi", threadType: "dm", timestamp: Date.now() });
+        buf.push("t1", { text: "hey", threadType: "dm", timestamp: Date.now() });
+        assert.equal(buf.getThreadType("t1"), "dm");
+    });
+
+    it("returns null for unknown thread", () => {
+        const buf = new MessageBuffer();
+        assert.equal(buf.getThreadType("nonexistent"), null);
+    });
+
+    it("returns null when thread exists but messages have no threadType", () => {
+        const buf = new MessageBuffer();
+        buf.push("t1", { text: "hi", timestamp: Date.now() });
+        assert.equal(buf.getThreadType("t1"), null);
+    });
+
+    it("returns group for group thread", () => {
+        const buf = new MessageBuffer();
+        buf.push("g1", { text: "hello", threadType: "group", timestamp: Date.now() });
+        assert.equal(buf.getThreadType("g1"), "group");
+    });
+});
+
 describe("MessageBuffer edge cases", () => {
     it("empty read on fresh buffer returns empty array and cursor 0", () => {
         const buf = new MessageBuffer();

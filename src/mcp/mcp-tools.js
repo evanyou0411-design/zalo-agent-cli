@@ -117,11 +117,9 @@ export function registerTools(server, api, buffer, filter, config, nameCache) {
         async ({ type }) => {
             try {
                 const stats = buffer.getStats(0);
-                // Enrich each stat entry with threadType by peeking at the first buffered message.
-                // buffer._threads is a Map<threadId, { messages: Array, lastActivity: number }>
+                // Enrich each stat entry with threadType and thread name
                 const enriched = stats.map((t) => {
-                    const thread = buffer._threads.get(t.threadId);
-                    const threadType = thread?.messages?.[0]?.threadType ?? "unknown";
+                    const threadType = buffer.getThreadType(t.threadId) ?? "unknown";
                     const cached = nameCache?.get(t.threadId);
                     return {
                         ...t,

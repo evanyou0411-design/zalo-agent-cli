@@ -65,7 +65,10 @@ export function registerListenCommand(program) {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(data),
-                }).catch(() => {});
+                    signal: AbortSignal.timeout(5000),
+                }).catch((e) => {
+                    console.error(`[listen] Webhook failed: ${e.message}`);
+                });
             }
 
             // Setup save directory if --save flag provided
@@ -84,7 +87,9 @@ export function registerListenCommand(program) {
                 const line = JSON.stringify({ ...data, savedAt: new Date().toISOString() }) + "\n";
                 try {
                     appendFileSync(filepath, line, "utf-8");
-                } catch {}
+                } catch (e) {
+                    console.error(`[listen] Save failed: ${e.message}`);
+                }
             }
 
             /** Output event as JSON or human-readable, save locally, then post to webhook */
@@ -276,7 +281,9 @@ export function registerListenCommand(program) {
                 process.on("SIGINT", () => {
                     try {
                         getApi().listener.stop();
-                    } catch {}
+                    } catch (e) {
+                        console.error(`[listen] Stop failed: ${e.message}`);
+                    }
                     info(`Stopped. Uptime: ${uptime()}, events: ${eventCount}, reconnects: ${reconnectCount}`);
                     if (saveDir) info(`Messages saved to: ${saveDir}`);
                     resolve();

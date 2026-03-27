@@ -3,9 +3,15 @@
  * Creates and connects the McpServer instance for Claude Code integration.
  */
 
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./mcp-tools.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8"));
 
 /**
  * Create and start MCP server with stdio transport.
@@ -20,7 +26,7 @@ import { registerTools } from "./mcp-tools.js";
 export async function createMCPServer(api, buffer, filter, config, nameCache) {
     const server = new McpServer({
         name: "zalo-agent",
-        version: "1.0.0",
+        version: pkg.version,
     });
 
     registerTools(server, api, buffer, filter, config, nameCache);

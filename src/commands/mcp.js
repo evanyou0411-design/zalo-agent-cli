@@ -56,6 +56,7 @@ export function registerMCPCommands(program) {
         .option("--config <path>", "Config file path (default: ~/.zalo-agent-cli/mcp-config.json)")
         .option("--http <port>", "Use HTTP transport on specified port (default: stdio)")
         .option("--auth <token>", "Bearer token for HTTP auth (only with --http)")
+        .option("--host <address>", "HTTP bind address (default: 127.0.0.1, only with --http)")
         .action(async (opts) => {
             // Perform login explicitly here — preAction hook skips "mcp"
             try {
@@ -84,11 +85,17 @@ export function registerMCPCommands(program) {
             }
 
             // Start MCP server — stdio (default) or HTTP
+            let httpServer = null;
             try {
                 if (opts.http) {
                     const port = Number(opts.http);
+                    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+                        console.error(`[mcp] Invalid port: ${opts.http}. Must be 1-65535.`);
+                        process.exit(1);
+                    }
                     const deps = { api: getApi(), buffer, filter, config, nameCache };
-                    createHTTPServer(registerTools, deps, port, opts.auth || null);
+                    const authToken = opts.auth?.trim() || null;
+                    httpServer = createHTTPServer(registerTools, deps, port, authToken, opts.host || "127.0.0.1");
                     console.error(`[mcp] HTTP server started on port ${port}`);
                 } else {
                     await createMCPServer(getApi(), buffer, filter, config, nameCache);
@@ -194,6 +201,14 @@ export function registerMCPCommands(program) {
                 console.error("[mcp] Failed to start listener:", e.message);
                 process.exit(1);
             }
+
+            // Graceful shutdown on SIGINT
+            process.on("SIGINT", () => {
+                try { getApi().listener.stop(); } catch {}
+                notifier?.destroy();
+                httpServer?.close();
+                process.exit(0);
+            });
 
             // Keep process alive (MCP server runs on stdio — process must not exit)
             await new Promise(() => {});

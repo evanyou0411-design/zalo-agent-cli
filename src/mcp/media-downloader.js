@@ -7,7 +7,7 @@
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { platform } from "os";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { CONFIG_DIR } from "../core/credentials.js";
 
 /** Default download directory when not configured */
@@ -123,9 +123,11 @@ function buildFileName(message, ext) {
  * @param {string} filePath
  */
 export function openFile(filePath) {
+    const isWin = platform() === "win32";
     const cmds = { darwin: "open", win32: "start", linux: "xdg-open" };
     const cmd = cmds[platform()] || "xdg-open";
-    exec(`${cmd} "${filePath}"`, (err) => {
+    // Windows "start" is a cmd.exe builtin — needs shell: true
+    execFile(cmd, isWin ? ["", filePath] : [filePath], { shell: isWin }, (err) => {
         if (err) console.error(`[media-dl] Failed to open viewer: ${err.message}`);
     });
 }

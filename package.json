@@ -18,7 +18,8 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "release": "npm version patch -m 'release: v%s' && git push origin main --tags"
+    "release": "npm version patch -m 'release: v%s' && git push origin main --tags",
+    "prepublishOnly": "npm run lint && npm test"
   },
   "keywords": [
     "zalo",

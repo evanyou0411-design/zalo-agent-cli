@@ -95,6 +95,16 @@ export class MessageBuffer {
     }
 
     /**
+     * Get thread type from first buffered message.
+     * @param {string} threadId
+     * @returns {string|null}
+     */
+    getThreadType(threadId) {
+        const thread = this._threads.get(threadId);
+        return thread?.messages?.[0]?.threadType ?? null;
+    }
+
+    /**
      * Evict messages that exceed maxSize or maxAge for a given thread.
      * @param {string} threadId
      */
